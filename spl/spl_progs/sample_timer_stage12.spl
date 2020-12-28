@@ -1,0 +1,69 @@
+// Save the current value of User SP to corresponding Process table entry
+[PROCESS_TABLE + ([SYSTEM_STATUS_TABLE + 1] * 16) + 13] = SP;
+// Setting SP to user area page number * 512 -1
+SP = [PROCESS_TABLE + ([SYSTEM_STATUS_TABLE + 1] * 16)+ 11] * 512 - 1;
+backup;
+// obtain pid of currently executin process from system status table.
+alias currentPID R0;
+currentPID = [SYSTEM_STATUS_TABLE+1];
+
+alias process_table_entry R1;
+process_table_entry = PROCESS_TABLE + currentPID * 16;
+
+[process_table_entry + 12] = SP % 512;
+[process_table_entry + 14] = PTBR;
+[process_table_entry + 15] = PTLR;
+
+[process_table_entry + 4] = READY;
+
+alias newPID R2;
+if (currentPID == 0) then
+	newPID = 1;
+else
+	newPID = 0;
+endif;
+
+// Restore the SP, PTBR, PTLR from the Process table entry for the new process
+alias new_process_table R3;
+new_process_table = PROCESS_TABLE + newPID * 16;
+
+// Set back Kernel SP, PTBR, PTLR
+SP = [new_process_table + 11] * 512 + [new_process_table + 12];
+PTBR = [new_process_table + 14];
+PTLR = [new_process_table + 15];
+
+// Set the PID field of the System Status Table ad newPID
+[SYSTEM_STATUS_TABLE + 1] = newPID;
+
+if([new_process_table + 4] == CREATED) then
+	[new_process_table + 4] = RUNNING;
+	SP = [new_process_table + 13];
+	ireturn;
+endif;
+
+[new_process_table + 4] = RUNNING;
+
+restore;
+SP = [PROCESS_TABLE + ([SYSTEM_STATUS_TABLE + 1] * 16) + 13];
+
+ireturn;
+
+
+// SAVE THE CURRENT VALUE OF USER SP INTO CORRESPONDING PROCESS TABLE ENTRY
+//[PROCESS_TABLE + ( [SYSTEM_STATUS_TABLE + 1] * 16) + 13] = SP;
+
+// Setting SP user area page number * 512 - 1
+//SP = [PROCESS_TABLE + ([SYSTEM_STATUS_TABLE + 1] * 16) + 11] * 512 - 1;
+
+// save the user context to the kernel stack
+//backup;
+
+//print "TIMER";
+
+// restore the user context from kernel stack and set sp to the user sp saved
+// process table
+//restore;
+//SP = [PROCESS_TABLE + ( [SYSTEM_STATUS_TABLE + 1] * 16) + 13];
+
+//ireturn;
+
